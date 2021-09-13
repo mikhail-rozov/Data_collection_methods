@@ -120,7 +120,7 @@ if __name__ == '__main__':
     search_string = input('Какую вакансию добавить в базу? ')
     salary_threshold = int(input('Вывести на экран вакансии с заработной платой больше какой величины?: '))
 
-    for i in range(1):
+    for i in range(3):
         parse_all(search_string, i)
 
     for item in vacancies.find({'$or': [{'MIN salary': {'$gte': salary_threshold}},
