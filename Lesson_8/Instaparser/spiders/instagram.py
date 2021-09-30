@@ -8,7 +8,6 @@ from copy import deepcopy
 
 
 class InstagramSpider(scrapy.Spider):
-
     name = 'instagram'
     allowed_domains = ['instagram.com']
     start_urls = ['https://www.instagram.com/']
@@ -53,32 +52,31 @@ class InstagramSpider(scrapy.Spider):
             if follow_type == 'followers':
                 params['search_surface'] = 'follow_list_page'
 
-            yield response.follow(f'{self.api_url}/{user_id}/{follow_type}?{urlencode(params)}',
-                                  callback=self.get_follows,
-                                  headers=self.api_header,
-                                  cb_kwargs={'user_id': user_id,
-                                             'username': username,
-                                             'params': deepcopy(params),
-                                             'follow_type': follow_type})
+            yield self.follow_response(response, user_id, username, follow_type, params)
 
-    def get_follows(self, response: HtmlResponse, user_id, username, params, follow_type):
+    def get_follows(self, response: HtmlResponse, user_id, username, follow_type, params):
         j_data = response.json()
         if 'next_max_id' in j_data.keys():
             params['max_id'] = j_data['next_max_id']
-            yield response.follow(f'{self.api_url}/{user_id}/{follow_type}?{urlencode(params)}',
-                                  callback=self.get_follows,
-                                  headers=self.api_header,
-                                  cb_kwargs={'user_id': user_id,
-                                             'username': username,
-                                             'params': deepcopy(params),
-                                             'follow_type': follow_type})
+
+            yield self.follow_response(response, user_id, username, follow_type, params)
+
         follows = j_data['users']
         for follow in follows:
             item = InstaparserItem(username=username,
                                    type=follow_type,
-                                   name=follow['full_name'] if follow['full_name']
-                                   else follow['username'],
+                                   name=follow['full_name'] if follow['full_name'] else follow['username'],
                                    profile_name=follow['username'],
                                    user_id=follow['pk'],
                                    photo_link=follow['profile_pic_url'])
             yield item
+
+    # Вспомогательная функция для исключения дублирования кода в скрипте
+    def follow_response(self, response, user_id, username, follow_type, params):
+        return response.follow(f'{self.api_url}/{user_id}/{follow_type}?{urlencode(params)}',
+                               callback=self.get_follows,
+                               headers=self.api_header,
+                               cb_kwargs={'user_id': user_id,
+                                          'username': username,
+                                          'params': deepcopy(params),
+                                          'follow_type': follow_type})
